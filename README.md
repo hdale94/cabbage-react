@@ -2,7 +2,7 @@
 
 This project provides hooks that allow you to synchronize [Cabbage](https://cabbageaudio.com) with [React](https://github.com/facebook/react).
 
-An example of implementation can be found [here](https://github.com/hdale94/vscabbage-react-example).
+An example of implementation can be found [here](https://github.com/hdale94/cabbage-react-example).
 
 ## Install
 
