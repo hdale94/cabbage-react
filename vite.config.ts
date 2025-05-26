@@ -9,15 +9,8 @@ export default defineConfig({
 	build: {
 		lib: {
 			entry: path.resolve(__dirname, "src/index.ts"),
-			name: "vscabbage-react",
-			fileName: (format) => {
-				if (format === "es") {
-					return "index.mjs"; // Output file for ES module
-				} else if (format === "cjs") {
-					return "index.cjs"; // Output file for CommonJS module
-				}
-				return "index.js"; // Default fallback (for other formats if added in the future)
-			},
+			name: "cabbage-react",
+			fileName: (format) => (format === "es" ? "index.mjs" : "index.cjs"),
 			formats: ["es", "cjs"], // Both ESM and CommonJS
 		},
 		rollupOptions: {
