@@ -25,6 +25,7 @@ export const useCabbageState = <T>(channel: string, paramIdx: number) => {
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
 			const { data } = event;
+			console.log("Cabbage-React: receiving parameter change", data);
 
 			if (data.channel !== channel) return;
 

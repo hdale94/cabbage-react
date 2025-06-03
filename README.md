@@ -1,4 +1,4 @@
-# Cabbage React
+# Cabbage-React
 
 This project provides hooks that allow you to synchronize [Cabbage](https://cabbageaudio.com) with [React](https://github.com/facebook/react).
 

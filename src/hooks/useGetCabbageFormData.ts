@@ -12,6 +12,7 @@ export const useGetCabbageFormData = () => {
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
 			const { data } = event;
+			console.log("Cabbage-react: receiving form data change", data);
 
 			if (
 				data.data &&
