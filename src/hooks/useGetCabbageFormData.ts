@@ -12,13 +12,13 @@ export const useGetCabbageFormData = () => {
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
 			const { data } = event;
-			console.log("Cabbage-react: receiving form data change", data);
 
 			if (
 				data.data &&
 				data.channel === "MainForm" &&
 				data.command === "widgetUpdate"
 			) {
+				console.log("Cabbage-React: receiving form data change", data);
 				setFormData(JSON.parse(data.data));
 			}
 		};

@@ -8,6 +8,7 @@ import { Cabbage } from "../cabbage/cabbage.js";
  */
 export const useCabbageState = <T>(channel: string, paramIdx: number) => {
 	const [channelValue, setChannelValue] = useState<T>();
+	const [channelType, setChannelType] = useState<"number" | "string">();
 	const [channelData, setChannelData] = useState<any>();
 
 	const handleValueChange = (newValue: T) => {
@@ -15,6 +16,7 @@ export const useCabbageState = <T>(channel: string, paramIdx: number) => {
 
 		const msg = {
 			paramIdx: paramIdx,
+			channelType: channelType,
 			channel: channel,
 			value: newValue,
 		};
@@ -32,6 +34,11 @@ export const useCabbageState = <T>(channel: string, paramIdx: number) => {
 			if (data.command === "widgetUpdate") {
 				if (data.value) setChannelValue(data.value);
 				if (data.data) setChannelData(JSON.parse(data.data));
+				if (typeof data.value === "number") {
+					setChannelType("number");
+				} else if (typeof data.value === "string") {
+					setChannelType("string");
+				}
 			}
 		};
 
