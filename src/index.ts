@@ -1,3 +1,3 @@
 export { useCabbageState } from "./hooks/useCabbageState";
-export { useGetCabbageFormData } from "./hooks/useGetCabbageFormData";
+export { useCabbageProperties } from "./hooks/useCabbageProperties";
 export { Cabbage } from "./cabbage/cabbage";

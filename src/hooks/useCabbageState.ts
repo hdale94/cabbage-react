@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Cabbage } from "../cabbage/cabbage.js";
 
 /**
@@ -9,7 +9,6 @@ import { Cabbage } from "../cabbage/cabbage.js";
 export const useCabbageState = <T>(channel: string, paramIdx: number) => {
 	const [channelValue, setChannelValue] = useState<T>();
 	const [channelType, setChannelType] = useState<"number" | "string">();
-	const [channelData, setChannelData] = useState<any>();
 
 	const handleValueChange = (newValue: T) => {
 		setChannelValue(newValue);
@@ -27,18 +26,40 @@ export const useCabbageState = <T>(channel: string, paramIdx: number) => {
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
 			const { data } = event;
-			console.log("Cabbage-React: receiving parameter change", data);
 
-			if (data.channel !== channel) return;
-
+			// Set initial value and type
 			if (data.command === "widgetUpdate") {
-				if (data.value) setChannelValue(data.value);
-				if (data.data) setChannelData(JSON.parse(data.data));
-				if (typeof data.value === "number") {
-					setChannelType("number");
-				} else if (typeof data.value === "string") {
-					setChannelType("string");
+				if (data.channel !== channel) return;
+
+				console.log(
+					`[Cabbage-React] ${data.command}: Received initial value for channel "${data.channel}"`,
+					data.value
+				);
+
+				if (data.value !== undefined) {
+					setChannelValue(data.value);
+
+					if (typeof data.value === "number") {
+						setChannelType("number");
+					} else if (typeof data.value === "string") {
+						setChannelType("string");
+					}
 				}
+			}
+
+			if (data.data?.paramIdx !== paramIdx) return;
+
+			// Update when receiving changes
+			if (
+				data.command === "parameterChange" &&
+				data?.data?.value !== undefined
+			) {
+				console.log(
+					`[Cabbage-React] ${data.command}: Received value change for paramIdx: ${data.data?.paramIdx}`,
+					data?.data?.value
+				);
+
+				setChannelValue(data?.data?.value);
 			}
 		};
 
@@ -52,6 +73,5 @@ export const useCabbageState = <T>(channel: string, paramIdx: number) => {
 	return {
 		value: channelValue,
 		setValue: handleValueChange,
-		data: channelData,
 	};
 };
