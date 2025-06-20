@@ -8,10 +8,11 @@ An example of implementation is available [here](https://github.com/hdale94/cabb
 
 ## Installation
 
-    yarn add cabbage-react
-    # or
-    npm install cabbage-react
-
+```jsx
+yarn add cabbage-react
+# or
+npm install cabbage-react
+```
 ## Hooks
 
 ### useCabbageState
@@ -31,7 +32,7 @@ This hook:
 
 ## Usage
 
-```
+```jsx
 import { InputHTMLAttributes } from "react";
 import { useCabbageProperties, useCabbageState } from "cabbage-react";
 
@@ -82,7 +83,7 @@ To let Cabbage know your UI is ready to receive data, send a `cabbageIsReadyToLo
 
 Place this call before rendering your app — typically in your main.tsx or index.tsx file:
 
-```
+```jsx
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
