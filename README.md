@@ -1,19 +1,100 @@
 # Cabbage-React
 
-This project provides hooks that allow you to synchronize [Cabbage](https://cabbageaudio.com) with [React](https://github.com/facebook/react).
+Cabbage-React provides React hooks for synchronizing [Cabbage](https://cabbageaudio.com) with [React](https://github.com/facebook/react), making it easier to build UI components that communicate with the Cabbage host.
 
-An example of implementation can be found [here](https://github.com/hdale94/cabbage-react-example).
+## Example Project
 
-## Install
+An example of implementation is available [here](https://github.com/hdale94/cabbage-react-example).
+
+## Installation
 
     yarn add cabbage-react
+    # or
+    npm install cabbage-react
 
 ## Hooks
 
 ### useCabbageState
 
-Sync a parameter with Cabbage. This hook listens for updates to a parameter value from Cabbage and sends updates to Cabbage when the parameter value changes locally (e.g., through a UI slider).
+Synchronize a parameter with Cabbage. This hook:
 
-### useGetCabbageFormData
+- Listens for value updates from Cabbage.
+- Sends local changes (e.g., via sliders, knobs) back to Cabbage.
 
-Get form data from Cabbage. This hook listens for updates to form data via Cabbage and updates the local state whenever new data is received.
+### useCabbageProperties
+
+Get properties for a parameter from Cabbage.
+This hook:
+
+- Listens for property updates from Cabbage.
+- Updates local state automatically when data changes.
+
+## Usage
+
+```
+import { InputHTMLAttributes } from "react";
+import { useCabbageProperties, useCabbageState } from "cabbage-react";
+
+const HorizontalSlider = ({
+	channel,
+	paramIdx,
+	inputProps,
+}: {
+	channel: string;
+	paramIdx: number;
+	inputProps?: InputHTMLAttributes<HTMLInputElement>;
+}) => {
+	const { properties } = useCabbageProperties(channel);
+	const { value, setValue } = useCabbageState<number>(channel, paramIdx);
+
+	return (
+		<div>
+			<input
+				type="range"
+				min={properties?.range?.min ?? 0}
+				max={properties?.range?.max ?? 1}
+				step={properties?.range?.increment ?? 0.01}
+				value={value}
+				onChange={(e) => setValue(e.target.valueAsNumber)}
+				{...inputProps}
+				style={{
+					accentColor: "rgb(147,210,0)",
+					...inputProps?.style,
+				}}
+			/>
+
+			{/* Displaying the value */}
+			<p style={{ margin: 0 }}>{value ?? 0}</p>
+		</div>
+	);
+};
+
+export default HorizontalSlider;
+```
+
+## Interact directly with Cabbage
+
+You can also import the [Cabbage class](https://github.com/hdale94/cabbage-react/blob/main/src/cabbage/cabbage.js) to send custom messages or interact directly with Cabbage.
+
+## Notify Cabbage When UI Is Ready
+
+To let Cabbage know your UI is ready to receive data, send a `cabbageIsReadyToLoad` message when your app initializes.
+
+Place this call before rendering your app — typically in your main.tsx or index.tsx file:
+
+```
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.tsx";
+import { Cabbage } from "cabbage-react";
+
+// Notify Cabbage that the UI is ready to receive data
+Cabbage.sendCustomCommand("cabbageIsReadyToLoad");
+
+createRoot(document.getElementById("root")!).render(
+	<StrictMode>
+		<App />
+	</StrictMode>
+);
+```
