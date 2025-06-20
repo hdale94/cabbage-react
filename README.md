@@ -1,6 +1,6 @@
 # Cabbage-React
 
-Cabbage-React provides React hooks for synchronizing [Cabbage](https://cabbageaudio.com) with [React](https://github.com/facebook/react), making it easier to build UI components that communicate with the Cabbage host.
+Cabbage-React provides React hooks for synchronizing [Cabbage](https://cabbageaudio.com) with [React](https://github.com/facebook/react), making it easier to build a custom UI that communicates with the Cabbage host.
 
 ## Example Project
 
