@@ -8,18 +8,18 @@ import { useState, useEffect } from "react";
 export const useCabbageProperties = (channel: string) => {
 	const [properties, setProperties] = useState<Record<string, any>>();
 
-	// Sync form data with external updates from Cabbage
+	// Sync properties with external updates
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
-			const { data } = event;
+			const { channel: incomingChannel, data, command } = event.data;
 
-			if (data.channel !== channel) return;
+			if (incomingChannel !== channel) return;
 
-			if (data.data && data.command === "widgetUpdate") {
-				const parsedData = JSON.parse(data.data);
+			if (data && command === "widgetUpdate") {
+				const parsedData = JSON.parse(data);
 
 				console.log(
-					`[Cabbage-React] ${data.command}: Received properties for channel: ${data.channel}`,
+					`[Cabbage-React] ${command}: Received properties for channel: ${incomingChannel}`,
 					parsedData
 				);
 
