@@ -42,12 +42,12 @@ const HorizontalSlider = ({
 	paramIdx,
 	inputProps,
 }: {
-	channel: string,
-	paramIdx: number,
-	inputProps?: InputHTMLAttributes<HTMLInputElement>,
+	channel: string;
+	paramIdx: number;
+	inputProps?: InputHTMLAttributes<HTMLInputElement>;
 }) => {
 	const { properties } = useCabbageProperties(channel);
-	const { value, setValue } = useCabbageState < number > (channel, paramIdx);
+	const { value, setValue } = useCabbageState<number>(channel, paramIdx);
 
 	return (
 		<div>
