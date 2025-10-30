@@ -7,86 +7,77 @@ import { useCabbageProperties } from "./useCabbageProperties.js";
  * This hook listens for updates to a parameter value from Cabbage and
  * sends updates to Cabbage when the parameter value changes locally (e.g., through a UI slider).
  */
-export const useCabbageState = <T>(channel: string, paramIdx: number) => {
-	const { properties } = useCabbageProperties(channel);
+export const useCabbageState = <T>(
+	channelId: string,
+	parameterIndex: number
+) => {
+	const { properties } = useCabbageProperties(channelId);
 
 	const [channelValue, setChannelValue] = useState<T>();
-	const [channelType, setChannelType] = useState<"number" | "string">();
 
 	const handleValueChange = (newValue: T) => {
 		setChannelValue(newValue);
 
 		const msg = {
-			paramIdx: paramIdx,
-			channelType: channelType,
-			channel: channel,
+			paramIdx: parameterIndex,
+			channel: channelId,
 			value: newValue,
 		};
 		Cabbage.sendParameterUpdate(msg, null);
 	};
 
-	const determineChannelType = (
-		value: any
-	): "number" | "string" | undefined => {
-		if (typeof value === "number") return "number";
-		if (typeof value === "string") return "string";
-	};
-
-	// Set initial value and type (relevant the first time you open plugin)
+	// Set initial or default value
 	useEffect(() => {
-		if (properties?.channel !== channel) return;
+		const incomingValue = properties?.value;
 
-		const defaultValue = properties?.range?.defaultValue;
+		// Set initial value - when opening an existing session, and when reopening the plugin UI
+		if (incomingValue !== undefined && incomingValue !== null) {
+			console.log(
+				`[Cabbage-React] Received initial value for channelId "${channelId}"`,
+				incomingValue
+			);
 
+			setChannelValue(incomingValue);
+			return;
+		}
+
+		// Find the specific properties of this channel in the channels-array
+		const channelProperties = properties?.channels.find(
+			(c: any) => c.id === channelId
+		);
+		if (!channelProperties) return;
+
+		const defaultValue = channelProperties.range?.defaultValue;
+
+		// Set default value - when adding the plugin to a session
 		if (channelValue === undefined && defaultValue !== undefined) {
 			console.log(
-				`[Cabbage-React]: Received default value for channel "${properties?.channel}"`,
+				`[Cabbage-React] Received default value for channelId "${channelProperties.id}"`,
 				defaultValue
 			);
 
 			setChannelValue(defaultValue);
-
-			const type = determineChannelType(defaultValue);
-			if (type) setChannelType(type);
 		}
 	}, [properties]);
 
-	// Sync value with external updates (e.g., automation from a DAW, opening a session where plugin exists)
+	// Sync value with external updates
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
 			const { command } = event.data;
 
-			// Set initial value and type
-			if (command === "widgetUpdate") {
-				const { channel: incomingChannel, value: incomingValue } = event.data;
+			// Update local channel value-state when receiving changes - automation from a DAW, setting value in Csound
+			if (command === "parameterChange") {
+				const { value, paramIdx: incomingParameterIndex } = event.data;
 
-				if (incomingChannel !== channel) return;
+				if (incomingParameterIndex !== parameterIndex) return;
+				if (value === null) return;
 
 				console.log(
-					`[Cabbage-React] ${command}: Received initial value for channel "${incomingChannel}"`,
-					incomingValue
+					`[Cabbage-React] Received value change for parameterIndex ${incomingParameterIndex}`,
+					value
 				);
 
-				if (incomingValue !== undefined) {
-					setChannelValue(incomingValue);
-
-					const type = determineChannelType(incomingValue);
-					if (type) setChannelType(type);
-				}
-			}
-
-			// Update when receiving changes
-			if (command === "parameterChange") {
-				const { paramIdx: incomingIdx, value: incomingValue } =
-					event.data.data || {};
-
-				if (incomingIdx === paramIdx && incomingValue !== undefined) {
-					console.log(
-						`[Cabbage-React] ${command}: Received value change for paramIdx: ${incomingIdx}`,
-						incomingValue
-					);
-					setChannelValue(incomingValue);
-				}
+				setChannelValue(value);
 			}
 		};
 

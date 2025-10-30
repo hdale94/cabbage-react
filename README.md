@@ -20,8 +20,10 @@ npm install cabbage-react
 
 Synchronize a parameter with Cabbage. This hook:
 
-- Listens for value updates from Cabbage.
-- Sends local changes (e.g., via sliders, knobs) back to Cabbage.
+- Identifies and sets the default value defined in Cabbage to a state.
+- Handles initialization when opening an existing session, or reopening the plugin window.
+- Listens for value updates from the host (DAW), or from Csound.
+- Sends changes back to Cabbage when using the provided value-setter.
 
 ### useCabbageProperties
 
@@ -33,21 +35,28 @@ This hook:
 
 ## Usage
 
-```jsx
+```tsx
 import { InputHTMLAttributes } from "react";
 import { useCabbageProperties, useCabbageState } from "cabbage-react";
 
 const HorizontalSlider = ({
-	channel,
-	paramIdx,
+	channelId,
+	parameterIndex,
 	inputProps,
 }: {
-	channel: string;
-	paramIdx: number;
+	channelId: string;
+	parameterIndex: number;
 	inputProps?: InputHTMLAttributes<HTMLInputElement>;
 }) => {
-	const { properties } = useCabbageProperties(channel);
-	const { value, setValue } = useCabbageState<number>(channel, paramIdx);
+	const { properties } = useCabbageProperties(channelId);
+	const channelProperties = properties?.channels.find(
+		(c: any) => c.id === channelId
+	);
+
+	const { value, setValue } = useCabbageState<number>(
+		channelId,
+		parameterIndex
+	);
 
 	return (
 		<div>
@@ -56,9 +65,9 @@ const HorizontalSlider = ({
 
 			<input
 				type="range"
-				min={properties?.range?.min ?? 0}
-				max={properties?.range?.max ?? 1}
-				step={properties?.range?.increment ?? 0.01}
+				min={channelProperties?.range?.min ?? 0}
+				max={channelProperties?.range?.max ?? 1}
+				step={channelProperties?.range?.increment ?? 0.01}
 				value={value}
 				onChange={(e) => setValue(e.target.valueAsNumber)}
 				{...inputProps}
