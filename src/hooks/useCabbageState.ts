@@ -52,17 +52,6 @@ export const useCabbageState = <T>(channelId: string, isDragging?: boolean) => {
 			setParamIdx(parameterIndex);
 		}
 
-		// Set initial value - when opening an existing session, and when reopening the plugin UI
-		const incomingValue = properties?.value;
-		if (incomingValue !== undefined && incomingValue !== null) {
-			console.log(
-				`[Cabbage-React] Received initial value for channelId "${channelId}"`,
-				incomingValue,
-			);
-
-			setChannelValue(incomingValue);
-		}
-
 		// Set default value - when adding the plugin to a session
 		const defaultValue = channelProperties.range?.defaultValue;
 		if (channelValue === undefined && defaultValue !== undefined) {
@@ -81,7 +70,7 @@ export const useCabbageState = <T>(channelId: string, isDragging?: boolean) => {
 
 			// Update local channel value-state when receiving changes - automation from a DAW, setting value in Csound
 			if (command === "parameterChange") {
-				if (isDragging === true) return; // Early return when parameter is being dragged to avoid redundant updating of channelValue-state
+				if (isDragging === true) return; // Early return when parameter is being dragged to avoid redundant updating of channel value-state
 
 				const { value, paramIdx: incomingParameterIndex } = event.data.data;
 
@@ -94,7 +83,7 @@ export const useCabbageState = <T>(channelId: string, isDragging?: boolean) => {
 				);
 				setChannelValue(value);
 			}
-			// Handle batch updating - loading a preset
+			// Handle batch updating - loading a preset, opening a session
 			else if (command === "batchWidgetUpdate") {
 				const widgets = event.data.widgets;
 				const widget = widgets?.find((w: any) => w.id === channelId);
