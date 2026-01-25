@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
  * Custom hook to get a parameter's properties from Cabbage.
  * This hook listens for updates to parameter properties via Cabbage and updates the local state
  * whenever new data is received.
+ * @param channelId - The Cabbage channel ID to bind to
  */
 export const useCabbageProperties = (channelId: string) => {
 	const [properties, setProperties] = useState<Record<string, any>>();
@@ -20,7 +21,7 @@ export const useCabbageProperties = (channelId: string) => {
 
 				console.log(
 					`[Cabbage-React] Received properties for channelId ${incomingChannelId}`,
-					parsedData
+					parsedData,
 				);
 
 				setProperties(parsedData);

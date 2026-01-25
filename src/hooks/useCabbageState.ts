@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Cabbage } from "../cabbage/cabbage.js";
 import { useCabbageProperties } from "./useCabbageProperties.js";
 
@@ -6,8 +6,10 @@ import { useCabbageProperties } from "./useCabbageProperties.js";
  * Custom hook to sync a parameter with Cabbage.
  * This hook listens for updates to a parameter value from Cabbage and
  * sends updates to Cabbage when the parameter value changes locally (e.g., through a UI slider).
+ * @param channelId - The Cabbage channel ID to bind to
+ * @param isDragging - When true, suppresses incoming `parameterChange` updates so local UI control remains authoritative during active user interaction.
  */
-export const useCabbageState = <T>(channelId: string) => {
+export const useCabbageState = <T>(channelId: string, isDragging?: boolean) => {
 	const { properties } = useCabbageProperties(channelId);
 
 	const [channelValue, setChannelValue] = useState<T>();
@@ -16,13 +18,20 @@ export const useCabbageState = <T>(channelId: string) => {
 	const handleValueChange = (value: T) => {
 		setChannelValue(value);
 
-		const msg = {
-			channel: channelId,
-			paramIdx,
-			value,
-		};
+		if (paramIdx === undefined) {
+			console.warn(
+				`[Cabbage-React] parameterIndex not ready for "${channelId}"`,
+			);
+			return;
+		}
 
-		Cabbage.sendParameterUpdate(msg, null);
+		const message = {
+			paramIdx,
+			channel: channelId,
+			value: value as number,
+			channelType: "number",
+		};
+		Cabbage.sendParameterUpdate(message, null);
 	};
 
 	// Set initial or default value
@@ -72,6 +81,8 @@ export const useCabbageState = <T>(channelId: string) => {
 
 			// Update local channel value-state when receiving changes - automation from a DAW, setting value in Csound
 			if (command === "parameterChange") {
+				if (isDragging === true) return; // Early return when parameter is being dragged to avoid redundant updating of channelValue-state
+
 				const { value, paramIdx: incomingParameterIndex } = event.data.data;
 
 				if (incomingParameterIndex !== paramIdx) return;
@@ -108,10 +119,11 @@ export const useCabbageState = <T>(channelId: string) => {
 		return () => {
 			window.removeEventListener("message", handleMessage);
 		};
-	}, [paramIdx]);
+	}, [paramIdx, isDragging]);
 
 	return {
 		value: channelValue,
 		setValue: handleValueChange,
+		parameterIndex: paramIdx,
 	};
 };
