@@ -11,14 +11,21 @@
  * There are two communication directions:
  *
  * ### UI -> Backend (Outgoing)
- * Use `sendChannelUpdate()` to send widget value changes to the backend.
- * It automatically routes to the correct internal handler based on the `automatable` flag:
- * - Automatable widgets -> DAW parameter system -> Csound
- * - Non-automatable widgets -> Csound directly
+ * Use `sendControlData({ channel, value, gesture })` to send widget value changes to the backend.
+ * Values should be sent in their full range (e.g., 20-20000 Hz for a filter
+ * frequency slider). The backend handles all value normalization needed by the host DAW.
+ * The backend automatically determines whether the channel is automatable and routes
+ * accordingly:
+ * - Automatable channels -> DAW parameter system -> Csound
+ * - Non-automatable channels -> Csound directly
+ * **Thread Safety**: This function is asynchronous and does NOT block the audio thread.
+ * Parameter updates are queued and processed safely without interrupting real-time audio processing.
  *
  * ### Backend -> UI (Incoming)
- * The backend sends messages via `hostMessageCallback()`. To intercept these messages,
- * define a global function in your UI code:
+ * The backend sends messages via `hostMessageCallback()`. Values received from the host
+ * are in their full range (e.g., 20-20000 Hz for a filter frequency slider).
+ * The backend handles all value normalization needed by the host DAW.
+ * To intercept these messages, define a global function in your UI code:
  *
  * ```javascript
  * window.hostMessageCallback = function(data) {
@@ -45,13 +52,13 @@
  * When the UI receives a `parameterChange` message from the backend, it should ONLY
  * update its visual display. It must NEVER send a parameter update back to the backend.
  *
- * The reason: `parameterChange` messages represent the authoritative value from the
- * DAW's automation system. Sending updates back would create feedback loops and
- * interfere with DAW automation playback.
+ * The reason: `parameterChange` messages represent the current value from the
+ * DAW. Sending updates back would create feedback loops and could interfere
+ * with DAW automation playback.
  *
  * Correct pattern:
- * - User drags slider → UI sends `sendChannelUpdate()` → DAW records automation
- * - DAW plays automation → Backend sends `parameterChange` → UI updates display only
+ * - User drags slider -> UI sends `sendControlData()` -> DAW records automation
+ * - DAW plays automation -> Backend sends `parameterChange` -> UI updates display only
  *
  * ## Handling User Interaction (isDragging pattern)
  *
@@ -85,16 +92,12 @@ console.log("Cabbage: loading cabbage.js");
 
 export class Cabbage {
 	/**
-	 * Main entry point for sending widget value changes to the Cabbage backend.
+	 * Send a widget value change to the Cabbage backend.
 	 *
-	 * This function automatically routes messages to the appropriate backend function
-	 * based on the automatable flag:
-	 *
-	 * - `automatable=true`: Routes to `sendParameterUpdate()` for DAW-automatable parameters.
-	 *   The value is sent to the DAW for automation recording and also forwarded to Csound.
-	 *
-	 * - `automatable=false`: Routes to `sendChannelData()` for non-automatable data.
-	 *   The value is sent directly to Csound without DAW parameter involvement.
+	 * The backend automatically determines whether the channel is DAW-automatable
+	 * and routes accordingly:
+	 * - Automatable channels -> DAW parameter system -> Csound
+	 * - Non-automatable channels -> Csound directly
 	 *
 	 * **When to use**: Call this from widget event handlers (e.g., pointer events, input changes)
 	 * when the user interacts with a widget.
@@ -102,143 +105,54 @@ export class Cabbage {
 	 * **When NOT to use**: Do not call this when handling incoming `parameterChange` messages
 	 * from the backend. Those messages are for display updates only.
 	 *
-	 * @param {Object} message - The message object containing widget data
-	 * @param {string} message.channel - The channel name
-	 * @param {number} message.paramIdx - Parameter index (required if automatable)
-	 * @param {number|string} message.value - The value to send
+	 * @param {Object} data - The control data to send
+	 * @param {string} data.channel - The channel name
+	 * @param {number|string} data.value - The value to send in its natural/meaningful range (e.g., 20-20000 Hz for filter frequency). The backend handles all normalization needed by the host DAW. This value can be a number or string depending on the widget type.
+	 * @param {string} [data.gesture="complete"] - The gesture type: "begin" (start of interaction), "value" (during interaction), "end" (end of continuous interaction), or "complete" (discrete action e.g. button click).
 	 * @param {Object|null} vscode - VS Code API object (null for plugin mode)
-	 * @param {boolean} automatable - Whether this widget is DAW-automatable
 	 */
-	static sendChannelUpdate(message, vscode = null, automatable = false) {
-		if (automatable === true || automatable === 1) {
-			// Use parameter update for automatable controls (support both boolean and legacy numeric)
-			Cabbage.sendParameterUpdate(message, vscode);
+	static sendControlData(
+		{ channel, value, gesture = "complete" },
+		vscode = null,
+	) {
+		const msg = {
+			command: "controlData",
+			channel: channel,
+			value: value,
+			gesture: gesture,
+		};
+
+		if (vscode !== null) {
+			vscode.postMessage(msg);
 		} else {
-			// Use channel data for non-automatable controls
-			const data =
-				message.value !== undefined
-					? message.value
-					: message.stringData || message.floatData;
-			Cabbage.sendChannelData(message.channel, data, vscode);
+			if (typeof window.sendMessageFromUI === "function") {
+				window.sendMessageFromUI(msg);
+			} else {
+				console.error(
+					"Cabbage: window.sendMessageFromUI is not available. Message:",
+					msg,
+				);
+			}
 		}
 	}
 
 	/**
-	 * Internal: Send a parameter update to the DAW for automation recording.
-	 * Use `sendChannelUpdate()` instead - it will route here automatically for automatable widgets.
+	 * Signal that the UI is ready to load and initialize.
 	 *
-	 * This function sends the parameter value to the DAW's automation system.
-	 * The DAW will then send the value back via a `parameterChange` message,
-	 * which updates both the UI and Csound.
+	 * @param {Object|null} vscode - VS Code API object (null for plugin mode)
+	 * @param {Object} additionalData - Additional initialization data
+	 */
+	static isReadyToLoad(vscode = null, additionalData = {}) {
+		this.sendCustomCommand("isReadyToLoad", vscode);
+	}
+	/**
+	 * Send a MIDI message from the UI to the Cabbage backend.
 	 *
-	 * **Important**: This creates a round-trip through the DAW:
-	 * 1. UI calls `sendParameterUpdate()` with value
-	 * 2. DAW receives and records/processes the value
-	 * 3. DAW sends `parameterChange` back to the plugin
-	 * 4. Plugin updates Csound and sends `parameterChange` to UI
-	 * 5. UI updates its display (but does NOT call sendParameterUpdate again!)
-	 *
-	 * @param {Object} message - The parameter message
-	 * @param {number} message.paramIdx - The parameter index (must be >= 0)
-	 * @param {string} message.channel - The channel name
-	 * @param {number} message.value - The parameter value (full range, not normalized)
-	 * @param {string} [message.channelType="number"] - The channel type
+	 * @param {number} statusByte - MIDI status byte
+	 * @param {number} dataByte1 - First MIDI data byte
+	 * @param {number} dataByte2 - Second MIDI data byte
 	 * @param {Object|null} vscode - VS Code API object (null for plugin mode)
 	 */
-	static sendParameterUpdate(message, vscode = null) {
-		// Validate that paramIdx is present and valid
-		if (message.paramIdx === undefined || message.paramIdx === null) {
-			console.error(
-				"Cabbage.sendParameterUpdate: message missing paramIdx!",
-				message,
-			);
-			return;
-		}
-
-		if (message.paramIdx < 0) {
-			console.warn(
-				"Cabbage.sendParameterUpdate: paramIdx is -1, skipping (non-automatable widget)",
-				message,
-			);
-			return;
-		}
-
-		const msg = {
-			command: "parameterChange",
-			paramIdx: message.paramIdx,
-			channel: message.channel,
-			value: message.value,
-			channelType: message.channelType || "number",
-		};
-
-		if (vscode !== null) {
-			vscode.postMessage(msg);
-		} else {
-			if (typeof window.sendMessageFromUI === "function") {
-				window.sendMessageFromUI(msg);
-			} else {
-				console.error(
-					"Cabbage: window.sendMessageFromUI is not available. Message:",
-					msg,
-				);
-			}
-		}
-	}
-
-	static sendCustomCommand(command, vscode = null, additionalData = {}) {
-		const msg = {
-			command: command,
-			text: JSON.stringify(additionalData),
-		};
-
-		if (vscode !== null) {
-			vscode.postMessage(msg);
-		} else {
-			if (typeof window.sendMessageFromUI === "function") {
-				console.log("Cabbage: Calling window.sendMessageFromUI with:", msg);
-				try {
-					const result = window.sendMessageFromUI(msg);
-					console.log("Cabbage: sendMessageFromUI returned:", result);
-				} catch (err) {
-					console.error("Cabbage: sendMessageFromUI threw error:", err);
-					console.error("Cabbage: Error stack:", err.stack);
-				}
-			} else {
-				console.error(
-					"Cabbage: window.sendMessageFromUI is not available yet. Message:",
-					msg,
-				);
-				console.error(
-					"Cabbage: typeof window.sendMessageFromUI:",
-					typeof window.sendMessageFromUI,
-				);
-				console.error(
-					"Cabbage: window.sendMessageFromUI value:",
-					window.sendMessageFromUI,
-				);
-			}
-		}
-	}
-
-	static sendWidgetUpdate(widget, vscode = null) {
-		const msg = {
-			command: "widgetStateUpdate",
-			obj: JSON.stringify(CabbageUtils.sanitizeForEditor(widget)),
-		};
-		if (vscode !== null) {
-			vscode.postMessage(msg);
-		} else {
-			if (typeof window.sendMessageFromUI === "function") {
-				window.sendMessageFromUI(msg);
-			} else {
-				console.error(
-					"Cabbage: window.sendMessageFromUI is not available. Message:",
-					msg,
-				);
-			}
-		}
-	}
-
 	static sendMidiMessageFromUI(
 		statusByte,
 		dataByte1,
@@ -271,55 +185,12 @@ export class Cabbage {
 	}
 
 	/**
-	 * Internal: Send channel data directly to Csound without DAW automation involvement.
-	 * Use `sendChannelUpdate()` instead - it will route here automatically for non-automatable widgets.
+	 * Handle incoming MIDI messages from the backend.
 	 *
-	 * Used for non-automatable widgets like buttons, file selectors, or
-	 * any widget that sends string data. The value is sent directly to Csound's
-	 * channel system and is not recorded by DAW automation.
-	 *
-	 * @param {string} channel - The Csound channel name
-	 * @param {number|string} data - The data to send (number or string)
-	 * @param {Object|null} vscode - VS Code API object (null for plugin mode)
+	 * @param {number} statusByte - MIDI status byte
+	 * @param {number} dataByte1 - First MIDI data byte
+	 * @param {number} dataByte2 - Second MIDI data byte
 	 */
-	static sendChannelData(channel, data, vscode = null) {
-		var message = {
-			channel: channel,
-		};
-
-		// Determine if data is a string or number and set appropriate property
-		if (typeof data === "string") {
-			message.stringData = data;
-		} else if (typeof data === "number") {
-			message.floatData = data;
-		} else {
-			console.warn(
-				"Cabbage: sendChannelData received unsupported data type:",
-				typeof data,
-			);
-			return;
-		}
-
-		const msg = {
-			command: "channelData",
-			obj: JSON.stringify(message),
-		};
-
-		console.log("Cabbage: sending channel data from UI", message);
-		if (vscode !== null) {
-			vscode.postMessage(msg);
-		} else {
-			if (typeof window.sendMessageFromUI === "function") {
-				window.sendMessageFromUI(msg);
-			} else {
-				console.error(
-					"Cabbage: window.sendMessageFromUI is not available. Message:",
-					msg,
-				);
-			}
-		}
-	}
-
 	static MidiMessageFromHost(statusByte, dataByte1, dataByte2) {
 		console.log(
 			"Cabbage: Got MIDI Message" +
@@ -331,6 +202,16 @@ export class Cabbage {
 		);
 	}
 
+	/**
+	 * Trigger a native file open dialog for file selection widgets.
+	 *
+	 * @param {Object|null} vscode - VS Code API object (null for plugin mode)
+	 * @param {string} channel - The associated channel name
+	 * @param {Object} options - Dialog options
+	 * @param {string} [options.directory] - Starting directory path
+	 * @param {string} [options.filters="*"] - File filters (e.g., "*.wav;*.aiff")
+	 * @param {boolean} [options.openAtLastKnownLocation=true] - Whether to open at last known location
+	 */
 	static triggerFileOpenDialog(vscode, channel, options = {}) {
 		var message = {
 			channel: channel,
@@ -360,6 +241,13 @@ export class Cabbage {
 		}
 	}
 
+	/**
+	 * Open a URL or file in the system's default application.
+	 *
+	 * @param {Object|null} vscode - VS Code API object (null for plugin mode)
+	 * @param {string} url - URL to open
+	 * @param {string} file - File path to open
+	 */
 	static openUrl(vscode, url, file) {
 		var message = {
 			url: url,
@@ -416,6 +304,119 @@ export class Cabbage {
 				console.error(
 					"Cabbage: window.sendMessageFromUI is not available. Message:",
 					msg,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Send channel data directly to Csound without DAW automation involvement.
+	 *
+	 * @param {string} channel - The Csound channel name
+	 * @param {number|string} data - The data to send (number or string)
+	 * @param {Object|null} vscode - VS Code API object (null for plugin mode)
+	 */
+	static sendChannelData(channel, data, vscode = null) {
+		var message = {
+			channel: channel,
+		};
+
+		// Determine if data is a string or number and set appropriate property
+		if (typeof data === "string") {
+			message.stringData = data;
+		} else if (typeof data === "number") {
+			message.floatData = data;
+		} else {
+			console.warn(
+				"Cabbage: sendChannelData received unsupported data type:",
+				typeof data,
+			);
+			return;
+		}
+
+		const msg = {
+			command: "channelData",
+			obj: JSON.stringify(message),
+		};
+
+		console.log("Cabbage: sending channel data from UI", message);
+		if (vscode !== null) {
+			vscode.postMessage(msg);
+		} else {
+			if (typeof window.sendMessageFromUI === "function") {
+				window.sendMessageFromUI(msg);
+			} else {
+				console.error(
+					"Cabbage: window.sendMessageFromUI is not available. Message:",
+					msg,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Send a widget state update to the Cabbage backend (used by property panel).
+	 *
+	 * @private
+	 * @param {Object} widget - The widget configuration object to update
+	 * @param {Object|null} vscode - VS Code API object (null for plugin mode)
+	 */
+	static sendWidgetUpdate(widget, vscode = null) {
+		const msg = {
+			command: "widgetStateUpdate",
+			obj: JSON.stringify(CabbageUtils.sanitizeForEditor(widget)),
+		};
+		if (vscode !== null) {
+			vscode.postMessage(msg);
+		} else {
+			if (typeof window.sendMessageFromUI === "function") {
+				window.sendMessageFromUI(msg);
+			} else {
+				console.error(
+					"Cabbage: window.sendMessageFromUI is not available. Message:",
+					msg,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Send a custom command to the Cabbage backend.
+	 *
+	 * @param {string} command - The command name to send
+	 * @param {Object|null} vscode - VS Code API object (null for plugin mode)
+	 * @param {Object} additionalData - Additional data to include in the command
+	 */
+	static sendCustomCommand(command, vscode = null, additionalData = {}) {
+		const msg = {
+			command: command,
+			text: JSON.stringify(additionalData),
+		};
+
+		if (vscode !== null) {
+			vscode.postMessage(msg);
+		} else {
+			if (typeof window.sendMessageFromUI === "function") {
+				console.log("Cabbage: Calling window.sendMessageFromUI with:", msg);
+				try {
+					const result = window.sendMessageFromUI(msg);
+					console.log("Cabbage: sendMessageFromUI returned:", result);
+				} catch (err) {
+					console.error("Cabbage: sendMessageFromUI threw error:", err);
+					console.error("Cabbage: Error stack:", err.stack);
+				}
+			} else {
+				console.error(
+					"Cabbage: window.sendMessageFromUI is not available yet. Message:",
+					msg,
+				);
+				console.error(
+					"Cabbage: typeof window.sendMessageFromUI:",
+					typeof window.sendMessageFromUI,
+				);
+				console.error(
+					"Cabbage: window.sendMessageFromUI value:",
+					window.sendMessageFromUI,
 				);
 			}
 		}

@@ -6,10 +6,13 @@ import { useCabbageProperties } from "./useCabbageProperties.js";
  * Custom hook to sync a parameter with Cabbage.
  * This hook listens for updates to a parameter value from Cabbage and
  * sends updates to Cabbage when the parameter value changes locally (e.g., through a UI slider).
- * @param channelId - The Cabbage channel ID to bind to
- * @param isDragging - When true, suppresses incoming `parameterChange` updates so local UI control remains authoritative during active user interaction.
+ * @param channelId - The channel name
+ * @param gesture - The gesture type: "begin" (start of interaction), "value" (during interaction), "end" (end of continuous interaction), or "complete" (discrete action e.g. button click).
  */
-export const useCabbageState = <T>(channelId: string, isDragging?: boolean) => {
+export const useCabbageState = <T>(
+	channelId: string,
+	gesture: "begin" | "value" | "end" | "complete" = "complete",
+) => {
 	const { properties } = useCabbageProperties(channelId);
 
 	const [channelValue, setChannelValue] = useState<T>();
@@ -18,20 +21,11 @@ export const useCabbageState = <T>(channelId: string, isDragging?: boolean) => {
 	const handleValueChange = (value: T) => {
 		setChannelValue(value);
 
-		if (paramIdx === undefined) {
-			console.warn(
-				`[Cabbage-React] parameterIndex not ready for "${channelId}"`,
-			);
-			return;
-		}
-
-		const message = {
-			paramIdx,
+		Cabbage.sendControlData({
 			channel: channelId,
-			value: value as number,
-			channelType: "number",
-		};
-		Cabbage.sendParameterUpdate(message, null);
+			value: value as string | number,
+			gesture,
+		});
 	};
 
 	// Set initial or default value
@@ -70,8 +64,6 @@ export const useCabbageState = <T>(channelId: string, isDragging?: boolean) => {
 
 			// Update local channel value-state when receiving changes - automation from a DAW, setting value in Csound
 			if (command === "parameterChange") {
-				if (isDragging === true) return; // Early return when parameter is being dragged to avoid redundant updating of channel value-state
-
 				const { value, paramIdx: incomingParameterIndex } = event.data.data;
 
 				if (incomingParameterIndex !== paramIdx) return;
@@ -108,11 +100,10 @@ export const useCabbageState = <T>(channelId: string, isDragging?: boolean) => {
 		return () => {
 			window.removeEventListener("message", handleMessage);
 		};
-	}, [paramIdx, isDragging]);
+	}, [paramIdx]);
 
 	return {
 		value: channelValue,
 		setValue: handleValueChange,
-		parameterIndex: paramIdx,
 	};
 };
