@@ -7,24 +7,22 @@ import { useState, useEffect } from "react";
  * @param messageId
  */
 export const useCabbageMessage = <T>(messageId: string) => {
-	const [message, setMessage] = useState<T>();
+	const [data, setData] = useState<T>();
 
 	// Sync message with external updates
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
-			const { widgetJson, command } = event.data;
+			const { data, type } = event;
 
-			if (widgetJson && command === "widgetUpdate") {
-				const parsedData = JSON.parse(widgetJson);
-
-				if (parsedData.id !== messageId) return;
+			if (data && type === "message") {
+				if (data.id !== messageId) return;
 
 				console.log(
-					`[Cabbage-React] Received message for channelId ${parsedData.id}`,
-					parsedData,
+					`[Cabbage-React] Received data for messageId ${data.id}`,
+					data,
 				);
 
-				setMessage(parsedData);
+				setData(data);
 			}
 		};
 
@@ -36,6 +34,6 @@ export const useCabbageMessage = <T>(messageId: string) => {
 	}, []);
 
 	return {
-		message,
+		data,
 	};
 };
