@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 
 /**
- * Custom hook to get a parameter's properties from Cabbage backend.
- * This hook listens for updates to parameter properties from the backend and updates the local state
+ * Custom hook to get a message from Cabbage backend.
+ * This hook listens to messages sent from the backend and updates the local state
  * whenever new data is received.
  * @param channelId
  */
-export const useCabbageProperties = (channelId: string) => {
-	const [properties, setProperties] = useState<Record<string, any>>();
+export const useCabbageMessage = <T>(channelId: string) => {
+	const [message, setMessage] = useState<T>();
 
-	// Sync properties with external updates
+	// Sync message with external updates
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent) => {
 			const { id: incomingChannelId, widgetJson, command } = event.data;
@@ -20,11 +20,11 @@ export const useCabbageProperties = (channelId: string) => {
 				const parsedData = JSON.parse(widgetJson);
 
 				console.log(
-					`[Cabbage-React] Received properties for channelId ${incomingChannelId}`,
+					`[Cabbage-React] Received message for channelId ${incomingChannelId}`,
 					parsedData,
 				);
 
-				setProperties(parsedData);
+				setMessage(parsedData);
 			}
 		};
 
@@ -36,6 +36,6 @@ export const useCabbageProperties = (channelId: string) => {
 	}, []);
 
 	return {
-		properties,
+		message,
 	};
 };

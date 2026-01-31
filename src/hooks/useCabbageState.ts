@@ -3,10 +3,10 @@ import { Cabbage } from "../cabbage/cabbage.js";
 import { useCabbageProperties } from "./useCabbageProperties.js";
 
 /**
- * Custom hook to sync a parameter with Cabbage.
- * This hook listens for updates to a parameter value from Cabbage and
- * sends updates to Cabbage when the parameter value changes locally (e.g., through a UI slider).
- * @param channelId - The channel name
+ * Custom hook to sync a parameter with Cabbage backend.
+ * This hook listens for updates to a parameter value from the backend and
+ * sends updates to the backend when the parameter value changes locally (e.g., through a UI slider).
+ * @param channelId
  * @param gesture - The gesture type: "begin" (start of interaction), "value" (during interaction), "end" (end of continuous interaction), or "complete" (discrete action e.g. button click).
  */
 export const useCabbageState = <T>(

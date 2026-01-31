@@ -1,6 +1,6 @@
 # Cabbage React
 
-Cabbage React provides React hooks for synchronizing [Cabbage](https://cabbageaudio.com) with [React](https://github.com/facebook/react), making it easier to build a custom UI that communicates with the Cabbage host.
+Cabbage React provides React hooks for synchronizing [Cabbage](https://cabbageaudio.com) with [React](https://github.com/facebook/react), making it easier to build a custom UI that communicates with the Cabbage backend.
 
 ## Example Project
 
@@ -18,20 +18,26 @@ npm install cabbage-react
 
 ### useCabbageState
 
-Synchronize a parameter with Cabbage. This hook:
+Synchronize a channel with the backend. This hook:
 
-- Identifies and sets the default value defined in Cabbage to a state.
+- Identifies and sets the default value defined in .csd to a state.
 - Handles initialization when opening an existing session, or reopening the plugin window.
 - Listens for value updates from the host (DAW), or from Csound.
-- Sends changes back to Cabbage when using the provided value-setter.
+- Sends changes to the backend using the provided value-setter.
 
 ### useCabbageProperties
 
-Get properties for a parameter from Cabbage.
-This hook:
+Get properties for a widget from the backend. This hook:
 
-- Listens for property updates from Cabbage.
+- Listens for property updates from the backend.
 - Updates local state automatically when data changes.
+
+### useCabbageMessage
+
+Get message for a channel from the backend. This hook:
+
+- Listens for messages from the backend.
+- Updates local state automatically when receiving a message.
 
 ## Usage
 
@@ -41,22 +47,17 @@ import { useCabbageProperties, useCabbageState } from "cabbage-react";
 
 const HorizontalSlider = ({
 	channelId,
-	parameterIndex,
 	inputProps,
 }: {
 	channelId: string;
-	parameterIndex: number;
 	inputProps?: InputHTMLAttributes<HTMLInputElement>;
 }) => {
 	const { properties } = useCabbageProperties(channelId);
 	const channelProperties = properties?.channels.find(
-		(c: any) => c.id === channelId
+		(c: any) => c.id === channelId,
 	);
 
-	const { value, setValue } = useCabbageState<number>(
-		channelId,
-		parameterIndex
-	);
+	const { value, setValue } = useCabbageState<number>(channelId);
 
 	return (
 		<div>
@@ -89,7 +90,7 @@ export default HorizontalSlider;
 
 ## Interact directly with Cabbage
 
-You can also import the [Cabbage class](https://github.com/hdale94/cabbage-react/blob/main/src/cabbage/cabbage.js) to send custom messages or interact directly with Cabbage.
+You can also import the [Cabbage class](https://github.com/hdale94/cabbage-react/blob/main/src/cabbage/cabbage.js) to send custom messages or interact directly with the backend.
 
 ## Notify Cabbage When UI Is Ready
 
