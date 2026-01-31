@@ -20,24 +20,37 @@ npm install cabbage-react
 
 Synchronize a channel with the backend. This hook:
 
-- Identifies and sets the default value defined in .csd to a state.
-- Handles initialization when opening an existing session, or reopening the plugin window.
-- Listens for value updates from the host (DAW), or from Csound.
-- Sends changes to the backend using the provided value-setter.
+- Automatically updates local state when value is received or changed
+- Sends changes to the backend using the provided value-setter
 
 ### useCabbageProperties
 
 Get properties for a widget from the backend. This hook:
 
-- Listens for property updates from the backend.
-- Updates local state automatically when data changes.
+- Automatically updates local state when properties are received or changed
 
 ### useCabbageMessage
 
-Get message for a channel from the backend. This hook:
+Get messages from the backend. This hook:
 
-- Listens for messages from the backend.
-- Updates local state automatically when receiving a message.
+- Automatically updates local state when a message is received
+- Expects a serialized JSON object (sent as a string) with an `id` property
+
+#### Example: sending a message from Csound
+
+```csd
+jsonData:S = sprintf({{
+{
+	"id":"NoteData",
+	"noteCount":%f,
+	"note":%f,
+	"noteLength":%f,
+	"noteVelocity":%f
+}
+}}, iNoteCount, iNote, iLength, iVelocity)
+
+cabbageSendMessage(jsonData)
+```
 
 ## Usage
 
