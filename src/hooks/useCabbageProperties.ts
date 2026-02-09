@@ -20,7 +20,7 @@ export const useCabbageProperties = (channelId: string) => {
 				const parsedData = JSON.parse(widgetJson);
 
 				console.log(
-					`[Cabbage-React] Received properties for channelId ${incomingChannelId}`,
+					`[Cabbage-React] Received properties for channelId: ${incomingChannelId}`,
 					parsedData,
 				);
 

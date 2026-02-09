@@ -18,7 +18,7 @@ export const useCabbageMessage = <T>(messageId: string) => {
 				if (data.id !== messageId) return;
 
 				console.log(
-					`[Cabbage-React] Received data for messageId ${data.id}`,
+					`[Cabbage-React] Received data for messageId: ${data.id}`,
 					data,
 				);
 

@@ -37,23 +37,28 @@ export const useCabbageState = <T>(
 		if (!channelProperties) return;
 
 		// Set parameterIndex
-		const parameterIndex = channelProperties?.parameterIndex;
+		const parameterIndex = channelProperties.parameterIndex;
 		if (paramIdx === undefined && parameterIndex !== undefined) {
 			console.log(
-				`[Cabbage-React] Received parameterIndex for channelId "${channelProperties.id}"`,
+				`[Cabbage-React] Received parameterIndex for channelId: ${channelProperties.id}`,
 				parameterIndex,
 			);
 			setParamIdx(parameterIndex);
 		}
 
-		// Set default value - when adding the plugin to a session
-		const defaultValue = channelProperties.range?.defaultValue;
-		if (channelValue === undefined && defaultValue !== undefined) {
+		// Skip setting default/initial value if channel-value is already set
+		if (channelValue !== undefined) return;
+
+		const initialValue = channelProperties.range?.value;
+
+		// Set default/initial value - when adding plugin to session, when reopening the plugin UI
+		if (initialValue !== undefined && initialValue !== null) {
 			console.log(
-				`[Cabbage-React] Received default value for channelId "${channelProperties.id}"`,
-				defaultValue,
+				`[Cabbage-React] Received initial value for channelId: ${channelProperties.id}`,
+				initialValue,
 			);
-			setChannelValue(defaultValue);
+
+			setChannelValue(initialValue);
 		}
 	}, [properties]);
 
@@ -70,7 +75,7 @@ export const useCabbageState = <T>(
 				if (value === null) return;
 
 				console.log(
-					`[Cabbage-React] Received parameterChange for parameterIndex ${incomingParameterIndex}`,
+					`[Cabbage-React] Received parameterChange for parameterIndex: ${incomingParameterIndex}`,
 					value,
 				);
 				setChannelValue(value);
@@ -88,7 +93,7 @@ export const useCabbageState = <T>(
 				const value = channelProperties?.range?.value;
 
 				console.log(
-					`[Cabbage-React] Received batch widget update for channelId ${widget.id}`,
+					`[Cabbage-React] Received batch widget update for channelId: ${widget.id}`,
 					value,
 				);
 				setChannelValue(value);
