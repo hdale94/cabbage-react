@@ -34,14 +34,14 @@ Get properties for a widget from the backend. This hook:
 Get messages from the backend. This hook:
 
 - Automatically updates local state when a message is received
-- Expects a serialized JSON object (sent as a string) with an `id` property
+- Expects a serialized JSON object (sent as a string) with a `type` property
 
 #### Example: sending a message from Csound
 
 ```csd
 jsonData:S = sprintf({{
 {
-	"id":"NoteData",
+	"type":"NoteData",
 	"noteCount":%f,
 	"note":%f,
 	"noteLength":%f,

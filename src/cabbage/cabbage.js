@@ -88,8 +88,6 @@
  * @module Cabbage
  */
 
-console.log("Cabbage: loading cabbage.js");
-
 export class Cabbage {
 	/**
 	 * Send a widget value change to the Cabbage backend.
@@ -191,16 +189,7 @@ export class Cabbage {
 	 * @param {number} dataByte1 - First MIDI data byte
 	 * @param {number} dataByte2 - Second MIDI data byte
 	 */
-	static MidiMessageFromHost(statusByte, dataByte1, dataByte2) {
-		console.log(
-			"Cabbage: Got MIDI Message" +
-				statusByte +
-				":" +
-				dataByte1 +
-				":" +
-				dataByte2,
-		);
-	}
+	static MidiMessageFromHost(statusByte, dataByte1, dataByte2) {}
 
 	/**
 	 * Trigger a native file open dialog for file selection widgets.
@@ -310,6 +299,31 @@ export class Cabbage {
 	}
 
 	/**
+	 * Control whether keyboard events are captured by the webview or forwarded
+	 * to the host DAW. Only relevant on Windows in plugin mode.
+	 *
+	 * By default (false), all key events are forwarded to the DAW so that
+	 * keyboard shortcuts continue to work while the plugin UI has focus.
+	 * Set to true when a custom text-entry widget (that is not a native
+	 * <input> or <textarea>) needs keyboard input, then restore to false
+	 * when the widget loses focus.
+	 *
+	 * Note: Native <input> and <textarea> elements are handled automatically
+	 * and do not require calling this function.
+	 *
+	 * @param {boolean} consume - true to capture keys in webview, false to pass through to DAW
+	 *
+	 * @example
+	 * myCustomEditor.addEventListener('focus', () => Cabbage.consumeKeypresses(true));
+	 * myCustomEditor.addEventListener('blur',  () => Cabbage.consumeKeypresses(false));
+	 */
+	static consumeKeypresses(consume) {
+		if (typeof window.consumeKeypresses === "function") {
+			window.consumeKeypresses(consume);
+		}
+	}
+
+	/**
 	 * Send channel data directly to Csound without DAW automation involvement.
 	 *
 	 * @param {string} channel - The Csound channel name
@@ -339,7 +353,6 @@ export class Cabbage {
 			obj: JSON.stringify(message),
 		};
 
-		console.log("Cabbage: sending channel data from UI", message);
 		if (vscode !== null) {
 			vscode.postMessage(msg);
 		} else {
@@ -397,10 +410,8 @@ export class Cabbage {
 			vscode.postMessage(msg);
 		} else {
 			if (typeof window.sendMessageFromUI === "function") {
-				console.log("Cabbage: Calling window.sendMessageFromUI with:", msg);
 				try {
 					const result = window.sendMessageFromUI(msg);
-					console.log("Cabbage: sendMessageFromUI returned:", result);
 				} catch (err) {
 					console.error("Cabbage: sendMessageFromUI threw error:", err);
 					console.error("Cabbage: Error stack:", err.stack);
