@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 /**
- * Custom hook to get messages for a specific type from Cabbage backend.
+ * Custom hook to get the latest message for a specific type from Cabbage backend.
  * This hook listens to messages sent from the backend and updates the local state
  * whenever new data is received.
  * @param messageType
