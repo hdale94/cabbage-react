@@ -5,8 +5,12 @@ import { useState, useEffect } from "react";
  * This hook listens for updates to parameter properties from the backend and updates the local state
  * whenever new data is received.
  * @param channelId
+ * @param onPropertiesUpdate - Callback fires immediately when receiving an update to properties (synchronous - bypasses state batching)
  */
-export const useCabbageProperties = (channelId: string) => {
+export const useCabbageProperties = (
+	channelId: string,
+	onPropertiesUpdate?: (properties: Record<string, any>) => void,
+) => {
 	const [properties, setProperties] = useState<Record<string, any>>();
 
 	// Sync properties with external updates
@@ -24,18 +28,18 @@ export const useCabbageProperties = (channelId: string) => {
 					parsedData,
 				);
 
+				if (onPropertiesUpdate) onPropertiesUpdate(parsedData);
 				setProperties(parsedData);
 			}
 		};
 
 		window.addEventListener("message", handleMessage);
 
-		return () => {
-			window.removeEventListener("message", handleMessage);
-		};
-	}, []);
+		return () => window.removeEventListener("message", handleMessage);
+	}, [channelId, onPropertiesUpdate]);
 
 	return {
 		properties,
+		onPropertiesUpdate,
 	};
 };

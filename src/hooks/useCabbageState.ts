@@ -8,10 +8,12 @@ import { useCabbageProperties } from "./useCabbageProperties.js";
  * sends updates to the backend when the parameter value changes locally (e.g., through a UI slider).
  * @param channelId
  * @param gesture - The gesture type: "begin" (start of interaction), "value" (during interaction), "end" (end of continuous interaction), or "complete" (discrete action e.g. button click).
+ * @param onValueUpdate - Callback fires immediately when receiving a value update (synchronous - bypasses state batching)
  */
 export const useCabbageState = <T>(
 	channelId: string,
 	gesture: "begin" | "value" | "end" | "complete" = "complete",
+	onValueUpdate?: (value: T) => void,
 ) => {
 	const { properties } = useCabbageProperties(channelId);
 
@@ -26,6 +28,11 @@ export const useCabbageState = <T>(
 			value: value as string | number,
 			gesture,
 		});
+	};
+
+	const applyValueUpdate = (value: T) => {
+		if (onValueUpdate) onValueUpdate(value);
+		setChannelValue(value);
 	};
 
 	// Set initial or default value
@@ -58,7 +65,7 @@ export const useCabbageState = <T>(
 				initialValue,
 			);
 
-			setChannelValue(initialValue);
+			applyValueUpdate(initialValue);
 		}
 	}, [properties]);
 
@@ -78,7 +85,7 @@ export const useCabbageState = <T>(
 					`[Cabbage-React] Received parameterChange for parameterIndex: ${incomingParameterIndex}`,
 					value,
 				);
-				setChannelValue(value);
+				applyValueUpdate(value);
 			}
 			// Handle batch updating - loading a preset, opening a session
 			else if (command === "batchWidgetUpdate") {
@@ -96,16 +103,14 @@ export const useCabbageState = <T>(
 					`[Cabbage-React] Received batch widget update for channelId: ${widget.id}`,
 					value,
 				);
-				setChannelValue(value);
+				applyValueUpdate(value);
 			}
 		};
 
 		window.addEventListener("message", handleMessage);
 
-		return () => {
-			window.removeEventListener("message", handleMessage);
-		};
-	}, [paramIdx]);
+		return () => window.removeEventListener("message", handleMessage);
+	}, [channelId, onValueUpdate, paramIdx]);
 
 	return {
 		value: channelValue,
