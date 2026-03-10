@@ -9,12 +9,19 @@ import { useCabbageProperties } from "./useCabbageProperties.js";
  * @param channelId
  * @param gesture - The gesture type: "begin" (start of interaction), "value" (during interaction), "end" (end of continuous interaction), or "complete" (discrete action e.g. button click).
  * @param onValueUpdate - Callback fires immediately when receiving a value update (synchronous - bypasses state batching)
+ * @param options - Optional configuration
+ * @param options.skip - When true, the hook returns a NOP state and never registers listeners
  */
 export const useCabbageState = <T>(
 	channelId: string,
 	gesture: "begin" | "value" | "end" | "complete" = "complete",
 	onValueUpdate?: (value: T) => void,
+	options?: { skip?: boolean },
 ) => {
+	// Early return when channelId is empty string or skip-option is set to true
+	if (!channelId || options?.skip)
+		return { value: undefined, setValue: () => {} };
+
 	const { properties } = useCabbageProperties(channelId);
 
 	const [channelValue, setChannelValue] = useState<T>();
@@ -112,8 +119,5 @@ export const useCabbageState = <T>(
 		return () => window.removeEventListener("message", handleMessage);
 	}, [channelId, onValueUpdate, paramIdx]);
 
-	return {
-		value: channelValue,
-		setValue: handleValueChange,
-	};
+	return { value: channelValue, setValue: handleValueChange };
 };

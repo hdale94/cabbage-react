@@ -6,11 +6,17 @@ import { useState, useEffect } from "react";
  * whenever new data is received.
  * @param messageType - The value of the `type` property in the incoming message object to listen for.
  * @param onMessage - Callback fires immediately when receiving a new message (synchronous - bypasses state batching)
+ * @param options - Optional configuration
+ * @param options.skip - When true, the hook returns a NOP state and never registers listeners
  */
 export const useCabbageMessage = <T>(
 	messageType: string,
 	onMessage?: (message: T) => void,
+	options?: { skip?: boolean },
 ) => {
+	// Early return when messageType is empty string or skip-option is set to true
+	if (!messageType || options?.skip) return { message: undefined };
+
 	const [message, setMessage] = useState<T>();
 
 	useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Custom hook to get a parameter's properties from Cabbage backend.
@@ -6,11 +6,17 @@ import { useState, useEffect } from "react";
  * whenever new data is received.
  * @param channelId
  * @param onPropertiesUpdate - Callback fires immediately when receiving an update to properties (synchronous - bypasses state batching)
+ * @param options - Optional configuration
+ * @param options.skip - When true, the hook returns a NOP state and never registers listeners
  */
 export const useCabbageProperties = (
 	channelId: string,
 	onPropertiesUpdate?: (properties: Record<string, any>) => void,
+	options?: { skip?: boolean },
 ) => {
+	// Early return when channelId is empty string or skip-option is set to true
+	if (!channelId || options?.skip) return { properties: undefined };
+
 	const [properties, setProperties] = useState<Record<string, any>>();
 
 	// Sync properties with external updates
@@ -38,8 +44,5 @@ export const useCabbageProperties = (
 		return () => window.removeEventListener("message", handleMessage);
 	}, [channelId, onPropertiesUpdate]);
 
-	return {
-		properties,
-		onPropertiesUpdate,
-	};
+	return { properties };
 };
