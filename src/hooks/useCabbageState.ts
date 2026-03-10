@@ -7,14 +7,12 @@ import { useCabbageProperties } from "./useCabbageProperties.js";
  * This hook listens for updates to a parameter value from the backend and
  * sends updates to the backend when the parameter value changes locally (e.g., through a UI slider).
  * @param channelId
- * @param gesture - The gesture type: "begin" (start of interaction), "value" (during interaction), "end" (end of continuous interaction), or "complete" (discrete action e.g. button click).
  * @param onValueUpdate - Callback fires immediately when receiving a value update (synchronous - bypasses state batching)
  * @param options - Optional configuration
  * @param options.skip - When true, the hook returns a NOP state and never registers listeners
  */
 export const useCabbageState = <T>(
 	channelId: string,
-	gesture: "begin" | "value" | "end" | "complete" = "complete",
 	onValueUpdate?: (value: T) => void,
 	options?: { skip?: boolean },
 ) => {
@@ -27,7 +25,10 @@ export const useCabbageState = <T>(
 	const [channelValue, setChannelValue] = useState<T>();
 	const [paramIdx, setParamIdx] = useState<number>();
 
-	const handleValueChange = (value: T) => {
+	const handleValueChange = (
+		value: T,
+		gesture: "begin" | "value" | "end" | "complete" = "complete",
+	) => {
 		setChannelValue(value);
 
 		Cabbage.sendControlData({
