@@ -7,14 +7,18 @@ import { useCabbageProperties } from "./useCabbageProperties.js";
  * This hook listens for updates to a parameter value from the backend and
  * sends updates to the backend when the parameter value changes locally (e.g., through a UI slider).
  * @param channelId
- * @param onValueUpdate - Callback fires immediately when receiving a value update (synchronous - bypasses state batching)
  * @param options - Optional configuration
+ * @param options.onValueUpdate - Callback fires immediately when receiving a value update (synchronous - bypasses state batching)
  * @param options.skip - When true, the hook returns a NOP state and never registers listeners
+ * @param options.debug - When true, logs incoming value updates for this hook to the console for debugging
  */
 export const useCabbageState = <T>(
 	channelId: string,
-	onValueUpdate?: (value: T) => void,
-	options?: { skip?: boolean },
+	options?: {
+		onValueUpdate?: (value: T) => void;
+		skip?: boolean;
+		debug?: boolean;
+	},
 ) => {
 	// Early return when channelId is empty string or skip-option is set to true
 	if (!channelId || options?.skip)
@@ -39,7 +43,7 @@ export const useCabbageState = <T>(
 	};
 
 	const applyValueUpdate = (value: T) => {
-		if (onValueUpdate) onValueUpdate(value);
+		if (options?.onValueUpdate) options.onValueUpdate(value);
 		setChannelValue(value);
 	};
 
@@ -54,10 +58,12 @@ export const useCabbageState = <T>(
 		// Set parameterIndex
 		const parameterIndex = channelProperties.parameterIndex;
 		if (paramIdx === undefined && parameterIndex !== undefined) {
-			console.log(
-				`[Cabbage-React] Received parameterIndex for channelId: ${channelProperties.id}`,
-				parameterIndex,
-			);
+			if (options?.debug) {
+				console.log(
+					`[Cabbage-React] Received parameterIndex for channelId: ${channelProperties.id}`,
+					parameterIndex,
+				);
+			}
 			setParamIdx(parameterIndex);
 		}
 
@@ -68,11 +74,12 @@ export const useCabbageState = <T>(
 
 		// Set default/initial value - when adding plugin to session, when reopening the plugin UI
 		if (initialValue !== undefined && initialValue !== null) {
-			console.log(
-				`[Cabbage-React] Received initial value for channelId: ${channelProperties.id}`,
-				initialValue,
-			);
-
+			if (options?.debug) {
+				console.log(
+					`[Cabbage-React] Received initial value for channelId: ${channelProperties.id}`,
+					initialValue,
+				);
+			}
 			applyValueUpdate(initialValue);
 		}
 	}, [properties]);
@@ -89,10 +96,12 @@ export const useCabbageState = <T>(
 				if (incomingParameterIndex !== paramIdx) return;
 				if (value === null) return;
 
-				console.log(
-					`[Cabbage-React] Received parameterChange for parameterIndex: ${incomingParameterIndex}`,
-					value,
-				);
+				if (options?.debug) {
+					console.log(
+						`[Cabbage-React] Received parameterChange for parameterIndex: ${incomingParameterIndex}`,
+						value,
+					);
+				}
 				applyValueUpdate(value);
 			}
 			// Handle batch updating - loading a preset, opening a session
@@ -107,10 +116,12 @@ export const useCabbageState = <T>(
 				);
 				const value = channelProperties?.range?.value;
 
-				console.log(
-					`[Cabbage-React] Received batch widget update for channelId: ${widget.id}`,
-					value,
-				);
+				if (options?.debug) {
+					console.log(
+						`[Cabbage-React] Received batch widget update for channelId: ${widget.id}`,
+						value,
+					);
+				}
 				applyValueUpdate(value);
 			}
 		};
@@ -118,7 +129,7 @@ export const useCabbageState = <T>(
 		window.addEventListener("message", handleMessage);
 
 		return () => window.removeEventListener("message", handleMessage);
-	}, [channelId, onValueUpdate, paramIdx]);
+	}, [channelId, options?.onValueUpdate, paramIdx]);
 
 	return { value: channelValue, setValue: handleValueChange };
 };
