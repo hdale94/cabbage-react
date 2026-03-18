@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Cabbage } from "../cabbage/cabbage.js";
 import { useCabbageProperties } from "./useCabbageProperties.js";
+import { createCabbageDebugger } from "../utils/cabbageDebug.js";
 
 /**
  * Custom hook to sync a parameter with Cabbage backend.
@@ -24,7 +25,16 @@ export const useCabbageState = <T>(
 	if (!channelId || options?.skip)
 		return { value: undefined, setValue: () => {} };
 
-	const { properties } = useCabbageProperties(channelId);
+	// Use ref to ensure effects always call the current debug function.
+	// This avoids stale closures when options.debug changes after effects mount.
+	const debugRef = useRef<ReturnType<typeof createCabbageDebugger> | undefined>(
+		undefined,
+	);
+	debugRef.current = createCabbageDebugger(channelId, options?.debug);
+
+	const { properties } = useCabbageProperties(channelId, {
+		debug: options?.debug,
+	});
 
 	const [channelValue, setChannelValue] = useState<T>();
 	const [paramIdx, setParamIdx] = useState<number>();
@@ -58,12 +68,7 @@ export const useCabbageState = <T>(
 		// Set parameterIndex
 		const parameterIndex = channelProperties.parameterIndex;
 		if (paramIdx === undefined && parameterIndex !== undefined) {
-			if (options?.debug) {
-				console.log(
-					`[Cabbage-React] Received parameterIndex for channelId: ${channelProperties.id}`,
-					parameterIndex,
-				);
-			}
+			debugRef.current?.("Received parameterIndex", parameterIndex);
 			setParamIdx(parameterIndex);
 		}
 
@@ -74,12 +79,7 @@ export const useCabbageState = <T>(
 
 		// Set default/initial value - when adding plugin to session, when reopening the plugin UI
 		if (initialValue !== undefined && initialValue !== null) {
-			if (options?.debug) {
-				console.log(
-					`[Cabbage-React] Received initial value for channelId: ${channelProperties.id}`,
-					initialValue,
-				);
-			}
+			debugRef.current?.("Received initial value", initialValue);
 			applyValueUpdate(initialValue);
 		}
 	}, [properties]);
@@ -96,12 +96,7 @@ export const useCabbageState = <T>(
 				if (incomingParameterIndex !== paramIdx) return;
 				if (value === null) return;
 
-				if (options?.debug) {
-					console.log(
-						`[Cabbage-React] Received parameterChange for parameterIndex: ${incomingParameterIndex}`,
-						value,
-					);
-				}
+				debugRef.current?.("Received parameterChange", value);
 				applyValueUpdate(value);
 			}
 			// Handle batch updating - loading a preset, opening a session
@@ -116,12 +111,7 @@ export const useCabbageState = <T>(
 				);
 				const value = channelProperties?.range?.value;
 
-				if (options?.debug) {
-					console.log(
-						`[Cabbage-React] Received batch widget update for channelId: ${widget.id}`,
-						value,
-					);
-				}
+				debugRef.current?.("Received batchWidgetUpdate", value);
 				applyValueUpdate(value);
 			}
 		};

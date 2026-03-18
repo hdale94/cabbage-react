@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createCabbageDebugger } from "../utils/cabbageDebug.js";
 
 /**
  * Custom hook to get the latest message for a specific type from Cabbage backend.
@@ -21,6 +22,13 @@ export const useCabbageMessage = <T>(
 	// Early return when messageType is empty string or skip-option is set to true
 	if (!messageType || options?.skip) return { message: undefined };
 
+	// Use ref to ensure effects always call the current debug function.
+	// This avoids stale closures when options.debug changes after effects mount.
+	const debugRef = useRef<ReturnType<typeof createCabbageDebugger> | undefined>(
+		undefined,
+	);
+	debugRef.current = createCabbageDebugger(messageType, options?.debug);
+
 	const [message, setMessage] = useState<T>();
 
 	useEffect(() => {
@@ -29,12 +37,7 @@ export const useCabbageMessage = <T>(
 			if (!data || type !== "message") return;
 			if (data.type !== messageType) return;
 
-			if (options?.debug) {
-				console.log(
-					`[Cabbage-React] Received data for messageType: ${data.type}`,
-					data,
-				);
-			}
+			debugRef.current?.("Received data", data);
 			if (options?.onMessage) options.onMessage(data);
 			setMessage(data);
 		};

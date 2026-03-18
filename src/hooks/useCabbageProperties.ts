@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createCabbageDebugger } from "../utils/cabbageDebug.js";
 
 /**
  * Custom hook to get a parameter's properties from Cabbage backend.
@@ -21,6 +22,13 @@ export const useCabbageProperties = (
 	// Early return when channelId is empty string or skip-option is set to true
 	if (!channelId || options?.skip) return { properties: undefined };
 
+	// Use ref to ensure effects always call the current debug function.
+	// This avoids stale closures when options.debug changes after effects mount.
+	const debugRef = useRef<ReturnType<typeof createCabbageDebugger> | undefined>(
+		undefined,
+	);
+	debugRef.current = createCabbageDebugger(channelId, options?.debug);
+
 	const [properties, setProperties] = useState<Record<string, any>>();
 
 	// Sync properties with external updates
@@ -33,12 +41,7 @@ export const useCabbageProperties = (
 			if (widgetJson && command === "widgetUpdate") {
 				const parsedData = JSON.parse(widgetJson);
 
-				if (options?.debug) {
-					console.log(
-						`[Cabbage-React] Received properties for channelId: ${incomingChannelId}`,
-						parsedData,
-					);
-				}
+				debugRef.current?.("Received properties", parsedData);
 				if (options?.onPropertiesUpdate) options.onPropertiesUpdate(parsedData);
 				setProperties(parsedData);
 			}
